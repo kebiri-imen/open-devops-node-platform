@@ -1,0 +1,34 @@
+name: CD - Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Deploy to VM via SSH
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VM_HOST }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.VM_SSH_KEY }}
+        port: 22
+        script: |
+          mkdir -p ~/app
+          cd ~/app
+          if [ ! -d ".git" ]; then
+            git clone https://github.com/kebiri-imen/open-devops-node-platform.git .
+          else
+            git pull origin main
+          fi
+          docker stop open-devops-node || true
+          docker rm open-devops-node || true
+          docker build -t open-devops-node .
+          docker run -d -p 3000:3000 --name open-devops-node --restart always open-devops-node
